@@ -2,6 +2,48 @@ import requests
 from settings import API_URL
 
 
+def get_hangar():
+    query = '''
+    query ships{
+        hangar {
+            id
+            name
+            description
+        }    
+    }
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
+def get_ship_details():
+    query = '''
+    query ships{
+        hangar {
+            id
+            name
+            description
+            integrity
+            description
+            offensePower
+            shieldPower
+            cargoSpace
+            speed
+            cost {
+            steel
+            water
+            gold
+            }
+            requirements {
+            militaryPower
+            shieldPower
+            enginePower
+            }
+        }    
+    }
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
 def get_planet(galaxy, solar_system, position):
     query = f'''
     query {{ solarSystem(galaxy_Id: {galaxy} galaxyPosition: {solar_system}) {{

@@ -1,14 +1,10 @@
 import cmd
-from src.queries import get_solar_system, get_planet
+from src.queries import get_solar_system, get_planet, get_hangar, get_ship_details
 from tabulate import tabulate
 import climage
 
 
-
-
-class HelloWorld(cmd.Cmd):
-    """Simple command processor example."""
-    username = input('username: ')
+def overview(username):
     print('----------------------------------------------------------')
     print(f'Hello {username}  | {chr(0x1F310)} Main Pannel           ') 
     print('----------------------------------------------------------')
@@ -35,15 +31,52 @@ class HelloWorld(cmd.Cmd):
 
     print(tabulate(overview, headers=['Steel', 'Water', 'Gold', 'Temperature (C˚)', 'Colonies'], tablefmt="fancy_grid"))
 
-    options_menu = [['Available Commands' ,chr(0x15CC),"universe", 'hangar', 'fleet', 'missions', 'Change-planet']]
+    options_menu = [['Available Commands' ,chr(0x15CC), 'overview','universe', 'hangar', 'fleet', 'missions', 'Change-planet']]
 
-    menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA),chr(0x15CA),  chr(0x15CA)]
+    menu_headers = ['COMMAND OPTIONS MENU', f'{chr(0x15CA)}', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA),chr(0x15CA),  chr(0x15CA)]
     print(tabulate(options_menu, menu_headers, tablefmt="simple"))
     print('-----------------------------------------------------------------------------------\n')
 
 
 
+class GalaxyClient(cmd.Cmd):
+    """Simple command processor example."""
+    username = input('username: ')
+    overview(username)
 
+    def do_overview(self, *args):
+        overview(self.username)
+
+
+    def do_hangar(self, *args):
+        hangar = get_hangar()['data']['hangar']
+        print(tabulate(hangar, headers='keys', tablefmt="heavy_outline"))
+
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'ship_detais']]
+
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
+    def do_ship_details(self, ship_id):
+        hangar = get_ship_details()['data']['hangar']
+        ship_id = int(ship_id)
+
+        if ship_id > len(hangar) or ship_id < 1:
+            print('++'*20)
+            print(f' {chr(0x1F6AB)} Invalid Ship ID {chr(0x1F6AB)}')
+            print('++'*20)
+            self.do_hangar()
+        
+        ship_info = hangar[ship_id]
+        
+        
+        
+        headers = ['Attribute', 'Description']
+        columns = [[k, v] for k, v in ship_info.items()]
+        # for k, v in ship_info.items():
+        #     headers.append(f'{k.upper()} : {v}')
+        print(tabulate(columns, headers=headers, tablefmt="double_outline"))
 
     def do_universe(self):
         print('Universe')
@@ -55,10 +88,11 @@ class HelloWorld(cmd.Cmd):
         g, ss, *_ = coords.split()
         solar_system = get_solar_system(g, ss)
         print(tabulate(solar_system, headers='keys'))
-    
+
     
     def do_EOF(self, line):
         return True
 
 if __name__ == '__main__':
-    HelloWorld().cmdloop()
+    GalaxyClient().cmdloop()
+    GalaxyClient().do_overview()
