@@ -1,5 +1,5 @@
 import cmd
-from src.queries import get_solar_system, get_planet, get_hangar, get_ship_details, get_building_next_lv
+from src.queries import get_solar_system, get_planet, get_hangar, get_ship_details, get_building_next_lv, get_improve_steel_mine, get_improve_gold_mine, get_improve_water_farm
 from tabulate import tabulate
 import climage
 
@@ -50,6 +50,7 @@ class GalaxyClient(cmd.Cmd):
     def do_overview(self, *args):
         overview(self.username, self.selected_planet)
 
+
     def do_change_planet(self, planet_id):
         """
         Change the overview to another colonized planet
@@ -97,6 +98,7 @@ class GalaxyClient(cmd.Cmd):
         columns = [[k, v] for k, v in ship_info.items()]
         print(tabulate(columns, headers=headers, tablefmt="double_outline"))
 
+        # TODO build ship
 
     def do_farms(self, *args):
         """
@@ -118,11 +120,84 @@ class GalaxyClient(cmd.Cmd):
         ]
         print(tabulate(rows, headers=headers, tablefmt="double_outline"))
 
-        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'improve_metal_mine', 'improve_gold_mine', 'improve_water_farm']]
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'improve_steel_mine', 'improve_gold_mine', 'improve_water_farm']]
 
         menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
         print(tabulate(options_menu, menu_headers, tablefmt="simple"))
         print('-----------------------------------------------------------------------------------\n')
+
+
+    def do_improve_steel_mine(self, *args):
+        """
+        Upgrade a steel mine building if able to cover
+        required resource amount for upgrading it.
+        """
+        print('Are you sure you want to upgrade the steel mine? Resources spent cannot be recovered after confirmation!')
+        confirmation = input('Confirm operation [y/n] ')
+        if confirmation.lower()[:1] != 'y':
+            print('Canceled upgrade of steel mine.')
+            self.do_farms()
+
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        upgrade = get_improve_steel_mine(current_planet['id'])
+
+        if 'errors' in upgrade:
+            print(upgrade['errors'][0]['message'])
+            self.do_farms()
+
+        else:
+            print(f'Your steel mine was upgraded to Lv: {upgrade["data"]["improveSteelMine"]["planet"]["steelMineLv"]}')
+            self.do_overview()
+
+    def do_improve_gold_mine(self, *args):
+        """
+        Upgrade a gold mine building if able to cover
+        required resource amount for upgrading it.
+        """
+        print('Are you sure you want to upgrade the gold mine? Resources spent cannot be recovered after confirmation!')
+        confirmation = input('Confirm operation [y/n] ')
+        if confirmation.lower()[:1] != 'y':
+            print('Canceled upgrade of gold mine.')
+            self.do_farms()
+
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        upgrade = get_improve_gold_mine(current_planet['id'])
+
+        if 'errors' in upgrade:
+            print(upgrade['errors'][0]['message'])
+            self.do_farms()
+
+        else:
+            print(f'Your gold mine was upgraded to Lv: {upgrade["data"]["improveGoldMine"]["planet"]["goldMineLv"]}')
+            self.do_overview()
+
+    def do_improve_water_farm(self, *args):
+        """
+        Upgrade a water farm building if able to cover
+        required resource amount for upgrading it.
+        """
+        print('Are you sure you want to upgrade the water farm? Resources spent cannot be recovered after confirmation!')
+        confirmation = input('Confirm operation [y/n] ')
+        if confirmation.lower()[:1] != 'y':
+            print('Canceled upgrade of water farm.')
+            self.do_farms()
+
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        upgrade = get_improve_water_farm(current_planet['id'])
+
+        if 'errors' in upgrade:
+            print(upgrade['errors'][0]['message'])
+            self.do_farms()
+
+        else:
+            print(f'Your water farm was upgraded to Lv: {upgrade["data"]["improveWaterFarm"]["planet"]["waterFarmLv"]}')
+            self.do_overview()
 
 
     def do_infrastructure(self, *args):
@@ -150,7 +225,6 @@ class GalaxyClient(cmd.Cmd):
         menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
         print(tabulate(options_menu, menu_headers, tablefmt="simple"))
         print('-----------------------------------------------------------------------------------\n')
-
 
 
     def do_universe(self):

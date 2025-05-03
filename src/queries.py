@@ -2,6 +2,46 @@ import requests
 from settings import API_URL
 
 
+
+def get_improve_water_farm(planet_id):
+    query = f'''
+    mutation {{
+        improveWaterFarm(input: {{planetId: {planet_id} }}){{
+            planet{{
+                waterFarmLv
+            }}
+        }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
+def get_improve_gold_mine(planet_id):
+    query = f'''
+    mutation {{
+        improveGoldMine(input: {{planetId: {planet_id} }}){{
+            planet{{
+                goldMineLv
+            }}
+        }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
+def get_improve_steel_mine(planet_id):
+    query = f'''
+    mutation {{
+        improveSteelMine(input: {{planetId: {planet_id} }}){{
+            planet{{
+                steelMineLv
+            }}
+        }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
 def get_building_next_lv(building_lv, building_type):
     query = f'''
     query {{
