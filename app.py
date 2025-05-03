@@ -168,7 +168,11 @@ class GalaxyClient(cmd.Cmd):
         print(tabulate(options_menu, menu_headers, tablefmt="simple"))
         print('-----------------------------------------------------------------------------------\n')
 
+
     def do_build_ship(self, ship_id):
+        """
+        Build a ship by its id.
+        """
         ship_id = int(ship_id)
         g, ss, p = self.selected_planet
         current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
@@ -182,7 +186,6 @@ class GalaxyClient(cmd.Cmd):
         else:
             print(f'You have acquired a new spaceship: {ship["data"]["buildShip"]["ship"]["name"]}')
             self.do_overview()
-
 
     ###################################
     # Resource and infrastructure upgrade
