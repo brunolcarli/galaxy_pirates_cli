@@ -1,23 +1,25 @@
 import cmd
-from src.queries import get_solar_system, get_planet, get_hangar, get_ship_details
+from src.queries import get_solar_system, get_planet, get_hangar, get_ship_details, get_building_next_lv
 from tabulate import tabulate
 import climage
 
 
-def overview(username):
+planets = (
+    ['COORD', [9, 102, 8]],
+    ['COORD', [7, 10, 2]]
+)
+
+
+def overview(username, selected_planet):
     print('----------------------------------------------------------')
     print(f'Hello {username}  | {chr(0x1F310)} Main Pannel           ') 
     print('----------------------------------------------------------')
 
-    planets = (
-        ['COORD', [9, 102, 8]],
-        ['COORD', [7, 10, 2]]
-    )
-    g,ss, p = planets[0][1]
+    g, ss, p = selected_planet
     current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
 
     print('----------------------------------------------------------\n')
-    print(f'                 PLANET OVERVIEW     [{g}, {ss}, {p}]                      ')
+    print(f'                 PLANET OVERVIEW     [{g}, {ss}, {p}]      ')
     print('----------------------------------------------------------\n')
 
     output = climage.convert('planet3.png', is_16color=False, palette='solarized', width=24, is_8color=True, is_256color=False)
@@ -31,9 +33,9 @@ def overview(username):
 
     print(tabulate(overview, headers=['Steel', 'Water', 'Gold', 'Temperature (C˚)', 'Colonies'], tablefmt="fancy_grid"))
 
-    options_menu = [['Available Commands' ,chr(0x15CC), 'overview','universe', 'hangar', 'fleet', 'missions', 'Change-planet']]
+    options_menu = [['Available Commands' ,chr(0x15CC), 'overview','universe', 'hangar', 'fleet', 'missions', 'change_planet', 'infrastructure', 'farms']]
 
-    menu_headers = ['COMMAND OPTIONS MENU', f'{chr(0x15CA)}', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA),chr(0x15CA),  chr(0x15CA)]
+    menu_headers = ['COMMAND OPTIONS MENU', f'{chr(0x15CA)}', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA),chr(0x15CA),  chr(0x15CA), chr(0x15CA), chr(0x15CA)]
     print(tabulate(options_menu, menu_headers, tablefmt="simple"))
     print('-----------------------------------------------------------------------------------\n')
 
@@ -42,13 +44,17 @@ def overview(username):
 class GalaxyClient(cmd.Cmd):
     """Simple command processor example."""
     username = input('username: ')
-    overview(username)
+    selected_planet = planets[0][1]
+    overview(username, selected_planet)
 
     def do_overview(self, *args):
-        overview(self.username)
+        overview(self.username, self.selected_planet)
 
 
     def do_hangar(self, *args):
+        """
+        View hangar ships
+        """
         hangar = get_hangar()['data']['hangar']
         print(tabulate(hangar, headers='keys', tablefmt="heavy_outline"))
 
@@ -58,7 +64,11 @@ class GalaxyClient(cmd.Cmd):
         print(tabulate(options_menu, menu_headers, tablefmt="simple"))
         print('-----------------------------------------------------------------------------------\n')
 
+
     def do_ship_details(self, ship_id):
+        """
+        View ship attributes
+        """
         hangar = get_ship_details()['data']['hangar']
         ship_id = int(ship_id)
 
@@ -67,18 +77,70 @@ class GalaxyClient(cmd.Cmd):
             print(f' {chr(0x1F6AB)} Invalid Ship ID {chr(0x1F6AB)}')
             print('++'*20)
             self.do_hangar()
-        
+
         ship_info = hangar[ship_id]
-        
-        
-        
         headers = ['Attribute', 'Description']
         columns = [[k, v] for k, v in ship_info.items()]
-        # for k, v in ship_info.items():
-        #     headers.append(f'{k.upper()} : {v}')
         print(tabulate(columns, headers=headers, tablefmt="double_outline"))
 
+
+    def do_farms(self, *args):
+        """
+        View farms and mine current levels and
+        necessary resources for upgrading them
+        """
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        steel_mine_data = get_building_next_lv(current_planet['steelMineLv'], 'steel_mine')['data']['buildingNextLevel']
+        water_farm_data = get_building_next_lv(current_planet['waterFarmLv'], 'water_farm')['data']['buildingNextLevel']
+        gold_mine_data = get_building_next_lv(current_planet['goldMineLv'], 'gold_mine')['data']['buildingNextLevel']
+
+        headers = ['Building', 'LV', 'Required Steel', 'Required Gold', 'Required Water']
+        rows = [
+            [steel_mine_data['name'], steel_mine_data['lv'], steel_mine_data['steel'], steel_mine_data['gold'], steel_mine_data['water']],
+            [water_farm_data['name'], water_farm_data['lv'], water_farm_data['steel'], water_farm_data['gold'], water_farm_data['water']],
+            [gold_mine_data['name'], gold_mine_data['lv'], gold_mine_data['steel'], gold_mine_data['gold'], gold_mine_data['water']],
+        ]
+        print(tabulate(rows, headers=headers, tablefmt="double_outline"))
+
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'improve_metal_mine', 'improve_gold_mine', 'improve_water_farm']]
+
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
+
+    def do_infrastructure(self, *args):
+        """
+        View infrastructure current levels and
+        necessary resources for upgrading them
+        """
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        military_power = get_building_next_lv(current_planet['militaryPower'], 'military_power')['data']['buildingNextLevel']
+        engine_power = get_building_next_lv(current_planet['enginePower'], 'engine_power')['data']['buildingNextLevel']
+        shield_power = get_building_next_lv(current_planet['shieldPower'], 'shield_power')['data']['buildingNextLevel']
+
+        headers = ['Building', 'LV', 'Required Steel', 'Required Gold', 'Required Water']
+        rows = [
+            [military_power['name'], military_power['lv'], military_power['steel'], military_power['gold'], military_power['water']],
+            [engine_power['name'], engine_power['lv'], engine_power['steel'], engine_power['gold'], engine_power['water']],
+            [shield_power['name'], shield_power['lv'], shield_power['steel'], shield_power['gold'], shield_power['water']],
+        ]
+        print(tabulate(rows, headers=headers, tablefmt="double_outline"))
+
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'improve_military_power', 'improve_engine_power', 'improve_shield_power']]
+
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
+
+
     def do_universe(self):
+        """ """
         print('Universe')
         print('not implemented')
 

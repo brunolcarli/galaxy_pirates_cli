@@ -2,6 +2,22 @@ import requests
 from settings import API_URL
 
 
+def get_building_next_lv(building_lv, building_type):
+    query = f'''
+    query {{
+        buildingNextLevel(currentLevel: {building_lv} buildingType: "{building_type}") {{
+            name
+            lv
+            steel
+            gold
+            water
+        }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+    
+
+
 def get_hangar():
     query = '''
     query ships{
