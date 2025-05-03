@@ -28,7 +28,7 @@ def overview(username, selected_planet):
     overview = [
         [current_planet['steel'], current_planet['water'], current_planet['gold'], current_planet['temperature'], ''],
         [f'Name: {current_planet["name"]}', f'Size: ({current_planet["fieldsUsed"]}/{current_planet["size"]})', f'Coords: [{g}, {ss}, {p}]', f'ID: {current_planet["id"]}', ''],
-        [buildings, infrastructure, f'Total ships landed:\n\n{chr(0x1F6E9)}: {len(current_planet["fleet"])} ships' ,output, '\n'.join(str(i[1]) for i in planets)]
+        [buildings, infrastructure, f'Total ships landed:\n\n{chr(0x1F6E9)}: {len(current_planet["fleet"])} ships' ,output, '\n'.join(f'{j}: ' + str(i[1]) for j, i in enumerate(planets))]
     ]
 
     print(tabulate(overview, headers=['Steel', 'Water', 'Gold', 'Temperature (C˚)', 'Colonies'], tablefmt="fancy_grid"))
@@ -48,6 +48,20 @@ class GalaxyClient(cmd.Cmd):
     overview(username, selected_planet)
 
     def do_overview(self, *args):
+        overview(self.username, self.selected_planet)
+
+    def do_change_planet(self, planet_id):
+        """
+        Change the overview to another colonized planet
+        """
+        planet_id = int(planet_id)
+        if planet_id < 0 or planet_id > len(planets) - 1:
+            print('++'*20)
+            print(f' {chr(0x1F6AB)} Invalid Planet {chr(0x1F6AB)}')
+            print('++'*20)
+            overview(self.username, self.selected_planet)
+        
+        self.selected_planet = planets[planet_id][1]
         overview(self.username, self.selected_planet)
 
 
