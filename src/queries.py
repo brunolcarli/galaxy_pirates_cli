@@ -2,6 +2,45 @@ import requests
 from settings import API_URL
 
 
+def get_improve_shield_power(planet_id):
+    query = f'''
+    mutation {{
+        improveShieldPower(input: {{planetId: {planet_id} }}){{
+            planet{{
+                shieldPower
+            }}
+        }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
+def get_improve_engine_power(planet_id):
+    query = f'''
+    mutation {{
+        improveEnginePower(input: {{planetId: {planet_id} }}){{
+            planet{{
+                enginePower
+            }}
+        }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
+def get_improve_military_power(planet_id):
+    query = f'''
+    mutation {{
+        improveMilitaryPower(input: {{planetId: {planet_id} }}){{
+            planet{{
+                militaryPower
+            }}
+        }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
 
 def get_improve_water_farm(planet_id):
     query = f'''

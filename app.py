@@ -1,5 +1,8 @@
 import cmd
-from src.queries import get_solar_system, get_planet, get_hangar, get_ship_details, get_building_next_lv, get_improve_steel_mine, get_improve_gold_mine, get_improve_water_farm
+from src.queries import (get_solar_system, get_planet, get_hangar,
+                         get_ship_details, get_building_next_lv, get_improve_steel_mine,
+                         get_improve_gold_mine, get_improve_water_farm, get_improve_engine_power,
+                         get_improve_military_power, get_improve_shield_power)
 from tabulate import tabulate
 import climage
 
@@ -47,6 +50,10 @@ class GalaxyClient(cmd.Cmd):
     selected_planet = planets[0][1]
     overview(username, selected_planet)
 
+    ###################################
+    # Overview and planets management
+    ###################################
+
     def do_overview(self, *args):
         overview(self.username, self.selected_planet)
 
@@ -65,40 +72,6 @@ class GalaxyClient(cmd.Cmd):
         self.selected_planet = planets[planet_id][1]
         overview(self.username, self.selected_planet)
 
-
-    def do_hangar(self, *args):
-        """
-        View hangar ships
-        """
-        hangar = get_hangar()['data']['hangar']
-        print(tabulate(hangar, headers='keys', tablefmt="heavy_outline"))
-
-        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'ship_detais']]
-
-        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
-        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
-        print('-----------------------------------------------------------------------------------\n')
-
-
-    def do_ship_details(self, ship_id):
-        """
-        View ship attributes
-        """
-        hangar = get_ship_details()['data']['hangar']
-        ship_id = int(ship_id)
-
-        if ship_id > len(hangar) or ship_id < 1:
-            print('++'*20)
-            print(f' {chr(0x1F6AB)} Invalid Ship ID {chr(0x1F6AB)}')
-            print('++'*20)
-            self.do_hangar()
-
-        ship_info = hangar[ship_id]
-        headers = ['Attribute', 'Description']
-        columns = [[k, v] for k, v in ship_info.items()]
-        print(tabulate(columns, headers=headers, tablefmt="double_outline"))
-
-        # TODO build ship
 
     def do_farms(self, *args):
         """
@@ -127,6 +100,75 @@ class GalaxyClient(cmd.Cmd):
         print('-----------------------------------------------------------------------------------\n')
 
 
+    def do_infrastructure(self, *args):
+        """
+        View infrastructure current levels and
+        necessary resources for upgrading them
+        """
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        military_power = get_building_next_lv(current_planet['militaryPower'], 'military_power')['data']['buildingNextLevel']
+        engine_power = get_building_next_lv(current_planet['enginePower'], 'engine_power')['data']['buildingNextLevel']
+        shield_power = get_building_next_lv(current_planet['shieldPower'], 'shield_power')['data']['buildingNextLevel']
+
+        headers = ['Building', 'LV', 'Required Steel', 'Required Gold', 'Required Water']
+        rows = [
+            [military_power['name'], military_power['lv'], military_power['steel'], military_power['gold'], military_power['water']],
+            [engine_power['name'], engine_power['lv'], engine_power['steel'], engine_power['gold'], engine_power['water']],
+            [shield_power['name'], shield_power['lv'], shield_power['steel'], shield_power['gold'], shield_power['water']],
+        ]
+        print(tabulate(rows, headers=headers, tablefmt="double_outline"))
+
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'improve_military_power', 'improve_engine_power', 'improve_shield_power']]
+
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
+    ###################################
+    # Fleet management
+    ###################################
+
+    def do_hangar(self, *args):
+        """
+        View hangar ships
+        """
+        hangar = get_hangar()['data']['hangar']
+        print(tabulate(hangar, headers='keys', tablefmt="heavy_outline"))
+
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'ship_details']]
+
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
+
+    def do_ship_details(self, ship_id):
+        """
+        View ship attributes
+        """
+        hangar = get_ship_details()['data']['hangar']
+        ship_id = int(ship_id)
+
+        if ship_id > len(hangar) or ship_id < 0:
+            print('++'*20)
+            print(f' {chr(0x1F6AB)} Invalid Ship ID {chr(0x1F6AB)}')
+            print('++'*20)
+            self.do_hangar()
+
+        ship_info = hangar[ship_id]
+        headers = ['Attribute', 'Description']
+        columns = [[k, v] for k, v in ship_info.items()]
+        print(tabulate(columns, headers=headers, tablefmt="double_outline"))
+
+        # TODO build ship
+
+
+    ###################################
+    # Resource and infrastructure upgrade
+    ###################################
+
     def do_improve_steel_mine(self, *args):
         """
         Upgrade a steel mine building if able to cover
@@ -151,6 +193,7 @@ class GalaxyClient(cmd.Cmd):
             print(f'Your steel mine was upgraded to Lv: {upgrade["data"]["improveSteelMine"]["planet"]["steelMineLv"]}')
             self.do_overview()
 
+
     def do_improve_gold_mine(self, *args):
         """
         Upgrade a gold mine building if able to cover
@@ -174,6 +217,7 @@ class GalaxyClient(cmd.Cmd):
         else:
             print(f'Your gold mine was upgraded to Lv: {upgrade["data"]["improveGoldMine"]["planet"]["goldMineLv"]}')
             self.do_overview()
+
 
     def do_improve_water_farm(self, *args):
         """
@@ -200,31 +244,82 @@ class GalaxyClient(cmd.Cmd):
             self.do_overview()
 
 
-    def do_infrastructure(self, *args):
+    def do_improve_engine_power(self, *args):
         """
-        View infrastructure current levels and
-        necessary resources for upgrading them
+        Upgrade a engines power if able to cover
+        required resource amount for upgrading it.
         """
+        print('Are you sure you want to upgrade the engine power? Resources spent cannot be recovered after confirmation!')
+        confirmation = input('Confirm operation [y/n] ')
+        if confirmation.lower()[:1] != 'y':
+            print('Canceled upgrade of engine power.')
+            self.do_infrastructure()
+
         g, ss, p = self.selected_planet
         current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
 
-        military_power = get_building_next_lv(current_planet['militaryPower'], 'military_power')['data']['buildingNextLevel']
-        engine_power = get_building_next_lv(current_planet['enginePower'], 'engine_power')['data']['buildingNextLevel']
-        shield_power = get_building_next_lv(current_planet['shieldPower'], 'shield_power')['data']['buildingNextLevel']
+        upgrade = get_improve_engine_power(current_planet['id'])
 
-        headers = ['Building', 'LV', 'Required Steel', 'Required Gold', 'Required Water']
-        rows = [
-            [military_power['name'], military_power['lv'], military_power['steel'], military_power['gold'], military_power['water']],
-            [engine_power['name'], engine_power['lv'], engine_power['steel'], engine_power['gold'], engine_power['water']],
-            [shield_power['name'], shield_power['lv'], shield_power['steel'], shield_power['gold'], shield_power['water']],
-        ]
-        print(tabulate(rows, headers=headers, tablefmt="double_outline"))
+        if 'errors' in upgrade:
+            print(upgrade['errors'][0]['message'])
+            self.do_infrastructure()
 
-        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'improve_military_power', 'improve_engine_power', 'improve_shield_power']]
+        else:
+            print(f'Your engines were upgraded to Lv: {upgrade["data"]["improveEnginePower"]["planet"]["enginePower"]}')
+            self.do_overview()
 
-        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
-        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
-        print('-----------------------------------------------------------------------------------\n')
+
+    def do_improve_shield_power(self, *args):
+        """
+        Upgrade shields power if able to cover
+        required resource amount for upgrading it.
+        """
+        print('Are you sure you want to upgrade the shield power? Resources spent cannot be recovered after confirmation!')
+        confirmation = input('Confirm operation [y/n] ')
+        if confirmation.lower()[:1] != 'y':
+            print('Canceled upgrade of shield power.')
+            self.do_infrastructure()
+
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        upgrade = get_improve_shield_power(current_planet['id'])
+
+        if 'errors' in upgrade:
+            print(upgrade['errors'][0]['message'])
+            self.do_infrastructure()
+
+        else:
+            print(f'Your shields were upgraded to Lv: {upgrade["data"]["improveShieldPower"]["planet"]["shieldPower"]}')
+            self.do_overview()
+
+    def do_improve_military_power(self, *args):
+        """
+        Upgrade miitary power if able to cover
+        required resource amount for upgrading it.
+        """
+        print('Are you sure you want to upgrade the military power? Resources spent cannot be recovered after confirmation!')
+        confirmation = input('Confirm operation [y/n] ')
+        if confirmation.lower()[:1] != 'y':
+            print('Canceled upgrade of military power.')
+            self.do_infrastructure()
+
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        upgrade = get_improve_military_power(current_planet['id'])
+
+        if 'errors' in upgrade:
+            print(upgrade['errors'][0]['message'])
+            self.do_infrastructure()
+
+        else:
+            print(f'Your military forces were upgraded to Lv: {upgrade["data"]["improveMilitaryPower"]["planet"]["militaryPower"]}')
+            self.do_overview()
+
+    ##################################
+    # Other
+    ##################################
 
 
     def do_universe(self):
