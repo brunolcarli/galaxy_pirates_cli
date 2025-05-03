@@ -2,7 +2,7 @@ import cmd
 from src.queries import (get_solar_system, get_planet, get_hangar,
                          get_ship_details, get_building_next_lv, get_improve_steel_mine,
                          get_improve_gold_mine, get_improve_water_farm, get_improve_engine_power,
-                         get_improve_military_power, get_improve_shield_power)
+                         get_improve_military_power, get_improve_shield_power, get_build_ship)
 from tabulate import tabulate
 import climage
 
@@ -137,9 +137,9 @@ class GalaxyClient(cmd.Cmd):
         hangar = get_hangar()['data']['hangar']
         print(tabulate(hangar, headers='keys', tablefmt="heavy_outline"))
 
-        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'ship_details']]
+        options_menu = [['Available Commands' ,chr(0x15CC), "overview", 'ship_details', 'build_ship']]
 
-        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA)]
         print(tabulate(options_menu, menu_headers, tablefmt="simple"))
         print('-----------------------------------------------------------------------------------\n')
 
@@ -162,7 +162,26 @@ class GalaxyClient(cmd.Cmd):
         columns = [[k, v] for k, v in ship_info.items()]
         print(tabulate(columns, headers=headers, tablefmt="double_outline"))
 
-        # TODO build ship
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'hangar', 'build_ship']]
+
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
+    def do_build_ship(self, ship_id):
+        ship_id = int(ship_id)
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        ship = get_build_ship(current_planet['id'], ship_id)
+
+        if 'errors' in ship:
+            print(ship['errors'][0]['message'])
+            self.do_hangar()
+
+        else:
+            print(f'You have acquired a new spaceship: {ship["data"]["buildShip"]["ship"]["name"]}')
+            self.do_overview()
 
 
     ###################################
@@ -293,9 +312,10 @@ class GalaxyClient(cmd.Cmd):
             print(f'Your shields were upgraded to Lv: {upgrade["data"]["improveShieldPower"]["planet"]["shieldPower"]}')
             self.do_overview()
 
+
     def do_improve_military_power(self, *args):
         """
-        Upgrade miitary power if able to cover
+        Upgrade military power if able to cover
         required resource amount for upgrading it.
         """
         print('Are you sure you want to upgrade the military power? Resources spent cannot be recovered after confirmation!')

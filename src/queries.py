@@ -2,6 +2,23 @@ import requests
 from settings import API_URL
 
 
+def get_build_ship(planet_id, ship_id):
+    query = f'''
+    mutation buildship{{
+        buildShip(input: {{
+            planetId: {planet_id}
+            shipId: {ship_id}
+        }}){{
+            ship {{
+                id
+                name
+            }}
+        }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
 def get_improve_shield_power(planet_id):
     query = f'''
     mutation {{
