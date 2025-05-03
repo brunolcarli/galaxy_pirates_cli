@@ -1,0 +1,65 @@
+import requests
+from settings import API_URL
+
+
+def get_planet(galaxy, solar_system, position):
+    query = f'''
+    query {{ solarSystem(galaxy_Id: {galaxy} galaxyPosition: {solar_system}) {{
+        position{position}{{
+            id
+            name
+            galaxy
+            solarSystem
+            position
+            steel
+            water
+            gold
+            temperature
+            size
+            fieldsUsed
+            steelMineLv
+            waterFarmLv
+            goldMineLv
+            militaryPower
+            shieldPower
+            enginePower
+            fleet{{
+                name
+            }}
+        }}
+     }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
+def get_solar_system(galaxy, solar_system):
+    query = f'''
+    query {{ solarSystem(galaxy_Id: {galaxy} galaxyPosition: {solar_system}) {{
+        position1{{ id name galaxy solarSystem position }}
+        position2{{ id name galaxy solarSystem position }}
+        position3{{ id name galaxy solarSystem position }}
+        position4{{ id name galaxy solarSystem position }}
+        position5{{ id name galaxy solarSystem position }}
+        position6{{ id name galaxy solarSystem position }}
+        position7{{ id name galaxy solarSystem position }}
+        position8{{ id name galaxy solarSystem position }}
+        position9{{ id name galaxy solarSystem position }}
+        position10{{ id name galaxy solarSystem position }}
+        position11{{ id name galaxy solarSystem position }}
+        position12{{ id name galaxy solarSystem position }}
+        position13{{ id name galaxy solarSystem position }}
+        position14{{ id name galaxy solarSystem position }}
+        position15{{ id name galaxy solarSystem position }}
+     }}
+    }}
+    '''
+    return requests.post(API_URL, json={'query': query}).json()
+
+
+def get_current_planet(g, ss, p):
+    ...
+
+
+def get_planets(coords):
+    ...
