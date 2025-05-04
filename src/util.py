@@ -53,7 +53,7 @@ def show_solar_system(galaxy_id, solar_system_id):
     print(tabulate(rows, headers, tablefmt="double_outline"))
     print('-----------------------------------------------------------------------------------\n')
 
-    options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'explore_galaxy']]
+    options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'explore_galaxy', 'fleet']]
     menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
     print(tabulate(options_menu, menu_headers, tablefmt="simple"))
     

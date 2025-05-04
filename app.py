@@ -1,8 +1,9 @@
+from collections import Counter
 import cmd
-from src.queries import (get_solar_system, get_planet, get_hangar,
-                         get_ship_details, get_building_next_lv, get_improve_steel_mine,
-                         get_improve_gold_mine, get_improve_water_farm, get_improve_engine_power,
-                         get_improve_military_power, get_improve_shield_power, get_build_ship)
+from src.queries import (get_planet, get_hangar, get_ship_details, get_building_next_lv,
+                         get_improve_steel_mine, get_improve_gold_mine, get_improve_water_farm,
+                         get_improve_engine_power, get_improve_military_power, get_improve_shield_power,
+                         get_build_ship, get_send_attack_mission)
 from src.util import show_solar_system, banner
 from tabulate import tabulate
 import climage
@@ -192,6 +193,23 @@ class GalaxyClient(cmd.Cmd):
             print(f'You have acquired a new spaceship: {ship["data"]["buildShip"]["ship"]["name"]}')
             self.do_overview()
 
+    def do_fleet(self, *args):
+        """
+        Show fleet landed on the current planet.
+        """
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+        print(f'Viewing fleet at planet {current_planet["id"]} - {current_planet["name"]} [{g}, {ss}, {p}]\n')
+        headers = ['SHIP ID', 'SHIP NAME']
+        rows = [[ship['id'], ship['name']] for ship in current_planet['fleet']]
+        print(tabulate(rows, headers, tablefmt="fancy_grid"))
+
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'universe', 'hangar', 'farms', 'infrastructure', 'send_attack_mission']]
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
+
     ###################################
     # Resource and infrastructure upgrade
     ###################################
@@ -345,6 +363,96 @@ class GalaxyClient(cmd.Cmd):
             print(f'Your military forces were upgraded to Lv: {upgrade["data"]["improveMilitaryPower"]["planet"]["militaryPower"]}')
             self.do_overview()
 
+
+    ###################################
+    #   MISSIONS
+    ###################################
+
+    def do_send_attack_mission(self, *args):
+        """
+        Send a fleet to attack and loot another planet.
+        """
+        g, ss, p = self.selected_planet
+        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+
+        available_ships = {i['id']: i['name'] for i in current_planet['fleet']}
+
+        if not available_ships:
+            print(f'{chr(0x274C)}  IYou dont have any ships available in this planet to launch an assault mission! {chr(0x274C)}')
+            self.do_send_attack_mission()
+            return
+
+        target_planet = input('Insert the target planet ID: ')
+        if not target_planet or not target_planet.strip().isdigit():
+            print(f'{chr(0x274C)}  Invalid planet ID please inser correct target planet ID {chr(0x274C)}')
+            self.do_send_attack_mission()
+            return
+        
+        target_planet = int(target_planet)
+        if target_planet == current_planet['id']:
+            print(f'{chr(0x274C)}  Cannot attack your own planet {chr(0x274C)}')
+            self.do_send_attack_mission()
+            return
+
+
+        fleet_ids = []
+        print('Insert each ship correct ID to join fleet!')
+        print('Insert "ok" to finish fleet setup!')
+        while True:
+            ship_id = input('Ship ID: ')
+
+            if ship_id.strip().lower() == 'ok':
+                break
+
+            if not ship_id.strip().isdigit():
+                print(f'{chr(0x274C)} Ship ID must be a integer number {chr(0x274C)}')
+                continue
+            
+            ship_id = int(ship_id.strip())
+            if ship_id not in available_ships.keys():
+                print(f'{chr(0x274C)} Invalid ship ID for this planet {chr(0x274C)}')
+                continue
+            
+            fleet_ids.append(ship_id)
+
+        ship_names = Counter([available_ships[ship] for ship in fleet_ids])
+        print('Confirm the following fleet:')
+        print(tabulate(ship_names.items(), headers=['Ship name', 'Count'], tablefmt="fancy_grid"))
+
+        confirm_and_deploy = input(f'Deploy fleet containing {len(fleet_ids)} ships?\n [y/n]')
+        if not confirm_and_deploy.strip().lower() == 'y':
+            self.do_overview()
+            return
+
+        
+        mission = get_send_attack_mission(current_planet['id'], target_planet, fleet_ids)
+
+        if 'errors' in mission:
+            print(mission['errors'][0]['message'])
+            self.do_overview()
+            return
+        
+        mission = mission['data']['sendAttackMission']['mission']
+        headers = ['Mission Type', 'Origin', 'Target', 'Deploy datetime (UTC)', 'Arrival datetime (UTC)', 'Return datetime (UTC)']
+        rows = [
+            [
+                mission['kind'],
+                f'[{mission["originGalaxy"]}, {mission["originSolarSystem"]}, {mission["originPosition"]}]',
+                f'[{mission["targetGalaxy"]}, {mission["targetSolarSystem"]}, {mission["targetPosition"]}]',
+                mission['launchDatetime'],
+                mission['arrivalDatetime'],
+                mission['returnDatetime']
+            ]
+        ]
+
+        print(tabulate(rows, headers, tablefmt="fancy_grid"))
+        
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'universe', 'hangar', 'farms', 'infrastructure']]
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
+
     ##################################
     # Other
     ##################################
@@ -367,7 +475,7 @@ class GalaxyClient(cmd.Cmd):
             galaxy_id = int(galaxy_id.strip())
             solar_system_id = int(solar_system_id.strip())
         except:
-            print(f'\n {chr( 0x274C)} Invalid arguments {chr(0x274C)}')
+            print(f'\n {chr(0x274C)} Invalid arguments {chr(0x274C)}')
             print(f'{chr( 0x274C)} Command arguments must be like: "explore_galaxy 4 102" {chr( 0x274C)}\n')
             self.do_universe()
             return

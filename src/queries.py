@@ -111,7 +111,6 @@ def get_building_next_lv(building_lv, building_type):
     }}
     '''
     return requests.post(API_URL, json={'query': query}).json()
-    
 
 
 def get_hangar():
@@ -141,14 +140,14 @@ def get_ship_details():
             cargoSpace
             speed
             cost {
-            steel
-            water
-            gold
+                steel
+                water
+                gold
             }
             requirements {
-            militaryPower
-            shieldPower
-            enginePower
+                militaryPower
+                shieldPower
+                enginePower
             }
         }    
     }
@@ -178,6 +177,7 @@ def get_planet(galaxy, solar_system, position):
             shieldPower
             enginePower
             fleet{{
+                id
                 name
             }}
         }}
@@ -211,9 +211,41 @@ def get_solar_system(galaxy, solar_system):
     return requests.post(API_URL, json={'query': query}).json()
 
 
-def get_current_planet(g, ss, p):
+def get_send_attack_mission(origin_planet_id, target_planet_id, fleet_ids):
+    # TODO include speed
+    query = f'''
+    mutation {{
+        sendAttackMission(input: {{
+            originPlanet: {origin_planet_id}
+            targetPlanet: {target_planet_id}
+            fleet: {fleet_ids}
+            speed: 1
+        }}){{
+            mission {{
+                kind
+                originGalaxy
+                originSolarSystem
+                originPosition
+                targetGalaxy
+                targetSolarSystem
+                targetPosition
+                launchDatetime
+                arrivalDatetime
+                returnDatetime
+                distance
+            }}
+        }}
+    }}
+    '''
+
+    return requests.post(API_URL, json={'query': query}).json()
+
+
+def get_planet_spy(galaxy, solar_system, position):
     ...
+    # TODO
 
 
 def get_planets(coords):
     ...
+    # TODO
