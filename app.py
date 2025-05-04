@@ -3,7 +3,7 @@ from src.queries import (get_solar_system, get_planet, get_hangar,
                          get_ship_details, get_building_next_lv, get_improve_steel_mine,
                          get_improve_gold_mine, get_improve_water_farm, get_improve_engine_power,
                          get_improve_military_power, get_improve_shield_power, get_build_ship)
-from src.util import show_solar_system
+from src.util import show_solar_system, banner
 from tabulate import tabulate
 import climage
 
@@ -26,7 +26,7 @@ def overview(username, selected_planet):
     print(f'                 PLANET OVERVIEW     [{g}, {ss}, {p}]      ')
     print('----------------------------------------------------------\n')
 
-    output = climage.convert('planet3.png', is_16color=False, palette='solarized', width=24, is_8color=True, is_256color=False)
+    output = climage.convert('static/images/planet3.png', is_16color=False, palette='solarized', width=24, is_8color=True, is_256color=False)
     buildings = f'{chr(0x1F517)} Steel Mine Lv: {current_planet["steelMineLv"]}\n\n{chr(0x1F4A7)} Water Farm Lv: {current_planet["waterFarmLv"]}\n\n{chr(0x1F4B0)} Gold Mine Lv: {current_planet["goldMineLv"]}\n\n'
     infrastructure = f'{chr(0x2694)} Military Power: {current_planet["militaryPower"]}\n\n{chr(0x1F6E1)} Shield Power: {current_planet["shieldPower"]}\n\n{chr(0x1F680)} Engine power: {current_planet["enginePower"]}\n\n'
     overview = [
@@ -46,7 +46,10 @@ def overview(username, selected_planet):
 
 
 class GalaxyClient(cmd.Cmd):
-    """Simple command processor example."""
+    
+    banner()
+
+
     username = input('username: ')
     prompt = '> '
     selected_planet = planets[0][1]
