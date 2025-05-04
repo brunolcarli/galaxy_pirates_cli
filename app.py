@@ -3,6 +3,7 @@ from src.queries import (get_solar_system, get_planet, get_hangar,
                          get_ship_details, get_building_next_lv, get_improve_steel_mine,
                          get_improve_gold_mine, get_improve_water_farm, get_improve_engine_power,
                          get_improve_military_power, get_improve_shield_power, get_build_ship)
+from src.util import show_solar_system
 from tabulate import tabulate
 import climage
 
@@ -47,6 +48,7 @@ def overview(username, selected_planet):
 class GalaxyClient(cmd.Cmd):
     """Simple command processor example."""
     username = input('username: ')
+    prompt = '> '
     selected_planet = planets[0][1]
     overview(username, selected_planet)
 
@@ -350,48 +352,32 @@ class GalaxyClient(cmd.Cmd):
         Explore the universe galaxies and solar systems
         """
         g, ss, p = self.selected_planet
-        solar_system = get_solar_system(g, ss)['data']['solarSystem']
+        show_solar_system(g, ss)
 
-        headers = ['Planet Position', 'Planet ID', 'Planet Name', 'Planet coordinates', 'Gravity Field']
-        rows = []
-        for pos, value in enumerate(solar_system.values()):
-            position = pos + 1
-            coords = f'[{g}, {ss}, {position}]'
-            if value is None:
-                planet_id = ''
-                planet_name = ''
-            else:
-                planet_id = value['id']
-                planet_name = f'{chr(0x1FA90)} ' + value['name']
 
-            rows.append([position, planet_id, planet_name, coords, ''])
+    def do_explore_galaxy(self, coords):
+        """
+        Explore available galaxies and solar systems in the universe.
+        """
+        try:
+            galaxy_id, solar_system_id, *_ = coords.split()
+            galaxy_id = int(galaxy_id.strip())
+            solar_system_id = int(solar_system_id.strip())
+        except:
+            print(f'\n {chr( 0x274C)} Invalid arguments {chr(0x274C)}')
+            print(f'{chr( 0x274C)} Command arguments must be like: "explore_galaxy 4 102" {chr( 0x274C)}\n')
+            self.do_universe()
+            return
+
+        if galaxy_id < 1 or galaxy_id > 9:
+            print(tabulate([[f'GALAXY {galaxy_id} IS OUT OF RANGE'], ['Galaxies limits are from 1 to 9']]))
+            self.do_universe()
         
+        if solar_system_id < 1 or solar_system_id > 500:
+            print(tabulate([[f'SOLAR SYSTEM {solar_system_id} IS OUT OF RANGE'], ['Solar systems limits are from 1 to 500']]))
+            self.do_universe()
 
-        print('---------------------------------------------------------------------------------------')
-        print('                                  GALAXY OVERVIEW                                      ')
-        print('-------------------------------------------------------------------------------------\n')
-
-        print(tabulate(
-            [
-                ['---', '---', '---', '---', f'{chr(0x1F30C)}', '', '   Galaxies   ', '1 to 9', '', '', f'{chr(0x1F30C)}', '---', '---', '---', '---'],
-                ['---', '---', '---', '---', f'{chr(0x2600)}', '', '   Solar Systems   ', '1 to 500', '', '', f'{chr(0x2600)}', '---', '---', '---', '---'],
-            ]
-        ))
-
-        print(tabulate(rows, headers, tablefmt="double_outline"))
-        print('-----------------------------------------------------------------------------------\n')
-
-        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'explore_galaxy']]
-        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA)]
-        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
-        
-
-
-    def do_ss(self, coords):
-        print(coords.split())
-        g, ss, *_ = coords.split()
-        solar_system = get_solar_system(g, ss)
-        print(tabulate(solar_system, headers='keys'))
+        show_solar_system(galaxy_id, solar_system_id)
 
     
     def do_EOF(self, line):
