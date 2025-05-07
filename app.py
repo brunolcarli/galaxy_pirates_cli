@@ -1,44 +1,53 @@
+import os
 from collections import Counter
 import cmd
+from random import choice
+from tabulate import tabulate
+import climage
 from src.queries import (get_planet, get_hangar, get_ship_details, get_building_next_lv,
                          get_improve_steel_mine, get_improve_gold_mine, get_improve_water_farm,
                          get_improve_engine_power, get_improve_military_power, get_improve_shield_power,
-                         get_build_ship, get_send_attack_mission)
-from src.util import show_solar_system, banner
-from tabulate import tabulate
-import climage
+                         get_build_ship, get_send_attack_mission, get_user_data, get_mission_reports)
+from src.util import show_solar_system, banner, landpage
+from settings import IMAGE_PATH, PLANET_PALETTE
 
 
-planets = (
-    ['COORD', [9, 102, 8]],
-    ['COORD', [7, 10, 2]]
-)
 
+def overview(user_metadata):
+    user_data = get_user_data(*user_metadata)['data']['user']
+    token = user_metadata[-1]
+    username = user_data['username']
+    current_planet = user_data['planets'][0]
+    g, ss, p = current_planet['galaxy'], current_planet['solarSystem'], current_planet['position']
+    planets = []
+    for planet in user_data['planets']:
+        planets.append([planet['id'], str([planet['galaxy'], planet['solarSystem'], planet['position']])])
 
-def overview(username, selected_planet):
     print('----------------------------------------------------------')
     print(f'Hello {username}  | {chr(0x1F310)} Main Pannel           ') 
     print('----------------------------------------------------------')
 
-    g, ss, p = selected_planet
-    current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
 
     print('----------------------------------------------------------\n')
     print(f'                 PLANET OVERVIEW     [{g}, {ss}, {p}]      ')
     print('----------------------------------------------------------\n')
 
-    output = climage.convert('static/images/planet3.png', is_16color=False, palette='solarized', width=24, is_8color=True, is_256color=False)
+    planet_pic = choice([img for img in os.listdir(IMAGE_PATH) if img.startswith('planet')])
+    output = climage.convert(f'{IMAGE_PATH}{planet_pic}', is_16color=False, palette=choice(PLANET_PALETTE), width=24, is_8color=True, is_256color=False)
+
+    headers = ['Steel', 'Water', 'Gold', 'Temperature (C˚)', 'Colonies']
     buildings = f'{chr(0x1F517)} Steel Mine Lv: {current_planet["steelMineLv"]}\n\n{chr(0x1F4A7)} Water Farm Lv: {current_planet["waterFarmLv"]}\n\n{chr(0x1F4B0)} Gold Mine Lv: {current_planet["goldMineLv"]}\n\n'
     infrastructure = f'{chr(0x2694)} Military Power: {current_planet["militaryPower"]}\n\n{chr(0x1F6E1)} Shield Power: {current_planet["shieldPower"]}\n\n{chr(0x1F680)} Engine power: {current_planet["enginePower"]}\n\n'
+
     overview = [
         [current_planet['steel'], current_planet['water'], current_planet['gold'], current_planet['temperature'], ''],
         [f'Name: {current_planet["name"]}', f'Size: ({current_planet["fieldsUsed"]}/{current_planet["size"]})', f'Coords: [{g}, {ss}, {p}]', f'ID: {current_planet["id"]}', ''],
-        [buildings, infrastructure, f'Total ships landed:\n\n{chr(0x1F6E9)}: {len(current_planet["fleet"])} ships' ,output, '\n'.join(f'{j}: ' + str(i[1]) for j, i in enumerate(planets))]
+        [buildings, infrastructure, f'Total ships landed:\n\n{chr(0x1F6E9)}: {len(current_planet["fleet"])} ships' , output, '\n'.join(f'{i[0]}: ' + str(i[1]) for i in planets)]
     ]
 
-    print(tabulate(overview, headers=['Steel', 'Water', 'Gold', 'Temperature (C˚)', 'Colonies'], tablefmt="fancy_grid"))
+    print(tabulate(overview, headers=headers, tablefmt="fancy_grid"))
 
-    options_menu = [['Available Commands' ,chr(0x15CC), 'overview','universe', 'hangar', 'fleet', 'missions', 'change_planet', 'infrastructure', 'farms']]
+    options_menu = [['Available Commands', chr(0x15CC), 'overview','universe', 'hangar', 'fleet', 'missions', 'change_planet', 'infrastructure', 'farms']]
 
     menu_headers = ['COMMAND OPTIONS MENU', f'{chr(0x15CA)}', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA),chr(0x15CA),  chr(0x15CA), chr(0x15CA), chr(0x15CA)]
     print(tabulate(options_menu, menu_headers, tablefmt="simple"))
@@ -50,18 +59,22 @@ class GalaxyClient(cmd.Cmd):
     
     banner()
 
+    auth = landpage()
+    token = auth['token']
+    user_metadata = [auth['user']['id'], auth['user']['username'], token]
+    
 
-    username = input('username: ')
     prompt = '> '
-    selected_planet = planets[0][1]
-    overview(username, selected_planet)
+    selected_planet_id = auth['user']['planets'][0]['id']
+
+    overview(user_metadata)
 
     ###################################
     # Overview and planets management
     ###################################
 
     def do_overview(self, *args):
-        overview(self.username, self.selected_planet)
+        overview(self.user_metadata)
 
 
     def do_change_planet(self, planet_id):
@@ -69,14 +82,14 @@ class GalaxyClient(cmd.Cmd):
         Change the overview to another colonized planet
         """
         planet_id = int(planet_id)
-        if planet_id < 0 or planet_id > len(planets) - 1:
+        if planet_id < 0 or planet_id > len(self.planets) - 1:
             print('++'*20)
             print(f' {chr(0x1F6AB)} Invalid Planet {chr(0x1F6AB)}')
             print('++'*20)
-            overview(self.username, self.selected_planet)
+            overview(self.user_metadata)
         
-        self.selected_planet = planets[planet_id][1]
-        overview(self.username, self.selected_planet)
+        self.selected_planet = self.planets[planet_id]
+        overview(self.user_metadata)
 
 
     def do_farms(self, *args):
@@ -84,12 +97,18 @@ class GalaxyClient(cmd.Cmd):
         View farms and mine current levels and
         necessary resources for upgrading them
         """
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+        # g, ss, p = self.selected_planet
+        # current_planet = get_planet(g, ss, p, self.token)['data']['solarSystem'][f'position{p}']
+        user_planets = get_user_data(*self.user_metadata)['data']['user']['planets']
+        current_planet = None
+        for planet in user_planets:
+            if planet['id'] == self.selected_planet_id:
+                current_planet = planet
+                break
 
-        steel_mine_data = get_building_next_lv(current_planet['steelMineLv'], 'steel_mine')['data']['buildingNextLevel']
-        water_farm_data = get_building_next_lv(current_planet['waterFarmLv'], 'water_farm')['data']['buildingNextLevel']
-        gold_mine_data = get_building_next_lv(current_planet['goldMineLv'], 'gold_mine')['data']['buildingNextLevel']
+        steel_mine_data = get_building_next_lv(current_planet['steelMineLv'], 'steel_mine', self.token)['data']['buildingNextLevel']
+        water_farm_data = get_building_next_lv(current_planet['waterFarmLv'], 'water_farm', self.token)['data']['buildingNextLevel']
+        gold_mine_data = get_building_next_lv(current_planet['goldMineLv'], 'gold_mine', self.token)['data']['buildingNextLevel']
 
         headers = ['Building', 'LV', 'Required Steel', 'Required Gold', 'Required Water']
         rows = [
@@ -111,12 +130,18 @@ class GalaxyClient(cmd.Cmd):
         View infrastructure current levels and
         necessary resources for upgrading them
         """
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+        # g, ss, p = self.selected_planet
+        # current_planet = get_planet(g, ss, p, self.token)['data']['solarSystem'][f'position{p}']
+        user_planets = get_user_data(*self.user_metadata)['data']['user']['planets']
+        current_planet = None
+        for planet in user_planets:
+            if planet['id'] == self.selected_planet_id:
+                current_planet = planet
+                break
 
-        military_power = get_building_next_lv(current_planet['militaryPower'], 'military_power')['data']['buildingNextLevel']
-        engine_power = get_building_next_lv(current_planet['enginePower'], 'engine_power')['data']['buildingNextLevel']
-        shield_power = get_building_next_lv(current_planet['shieldPower'], 'shield_power')['data']['buildingNextLevel']
+        military_power = get_building_next_lv(current_planet['militaryPower'], 'military_power', self.token)['data']['buildingNextLevel']
+        engine_power = get_building_next_lv(current_planet['enginePower'], 'engine_power', self.token)['data']['buildingNextLevel']
+        shield_power = get_building_next_lv(current_planet['shieldPower'], 'shield_power', self.token)['data']['buildingNextLevel']
 
         headers = ['Building', 'LV', 'Required Steel', 'Required Gold', 'Required Water']
         rows = [
@@ -140,7 +165,7 @@ class GalaxyClient(cmd.Cmd):
         """
         View hangar ships
         """
-        hangar = get_hangar()['data']['hangar']
+        hangar = get_hangar(self.token)['data']['hangar']
         print(tabulate(hangar, headers='keys', tablefmt="heavy_outline"))
 
         options_menu = [['Available Commands' ,chr(0x15CC), "overview", 'ship_details', 'build_ship']]
@@ -154,7 +179,7 @@ class GalaxyClient(cmd.Cmd):
         """
         View ship attributes
         """
-        hangar = get_ship_details()['data']['hangar']
+        hangar = get_ship_details(self.token)['data']['hangar']
         ship_id = int(ship_id)
 
         if ship_id > len(hangar) or ship_id < 0:
@@ -180,10 +205,8 @@ class GalaxyClient(cmd.Cmd):
         Build a ship by its id.
         """
         ship_id = int(ship_id)
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
 
-        ship = get_build_ship(current_planet['id'], ship_id)
+        ship = get_build_ship(self.selected_planet_id, ship_id, self.token)
 
         if 'errors' in ship:
             print(ship['errors'][0]['message'])
@@ -193,12 +216,19 @@ class GalaxyClient(cmd.Cmd):
             print(f'You have acquired a new spaceship: {ship["data"]["buildShip"]["ship"]["name"]}')
             self.do_overview()
 
+
     def do_fleet(self, *args):
         """
         Show fleet landed on the current planet.
         """
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
+        user_planets = get_user_data(*self.user_metadata)['data']['user']['planets']
+        current_planet = None
+        for planet in user_planets:
+            if planet['id'] == self.selected_planet_id:
+                current_planet = planet
+                break
+        g, ss, p = current_planet['galaxy'], current_planet['solarSystem'], current_planet['position']
+
         print(f'Viewing fleet at planet {current_planet["id"]} - {current_planet["name"]} [{g}, {ss}, {p}]\n')
         headers = ['SHIP ID', 'SHIP NAME']
         rows = [[ship['id'], ship['name']] for ship in current_planet['fleet']]
@@ -225,10 +255,7 @@ class GalaxyClient(cmd.Cmd):
             print('Canceled upgrade of steel mine.')
             self.do_farms()
 
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
-
-        upgrade = get_improve_steel_mine(current_planet['id'])
+        upgrade = get_improve_steel_mine(self.selected_planet_id, self.token)
 
         if 'errors' in upgrade:
             print(upgrade['errors'][0]['message'])
@@ -250,10 +277,7 @@ class GalaxyClient(cmd.Cmd):
             print('Canceled upgrade of gold mine.')
             self.do_farms()
 
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
-
-        upgrade = get_improve_gold_mine(current_planet['id'])
+        upgrade = get_improve_gold_mine(self.selected_planet_id, self.token)
 
         if 'errors' in upgrade:
             print(upgrade['errors'][0]['message'])
@@ -275,10 +299,7 @@ class GalaxyClient(cmd.Cmd):
             print('Canceled upgrade of water farm.')
             self.do_farms()
 
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
-
-        upgrade = get_improve_water_farm(current_planet['id'])
+        upgrade = get_improve_water_farm(self.selected_planet_id, self.token)
 
         if 'errors' in upgrade:
             print(upgrade['errors'][0]['message'])
@@ -300,10 +321,7 @@ class GalaxyClient(cmd.Cmd):
             print('Canceled upgrade of engine power.')
             self.do_infrastructure()
 
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
-
-        upgrade = get_improve_engine_power(current_planet['id'])
+        upgrade = get_improve_engine_power(self.selected_planet_id, self.token)
 
         if 'errors' in upgrade:
             print(upgrade['errors'][0]['message'])
@@ -325,10 +343,7 @@ class GalaxyClient(cmd.Cmd):
             print('Canceled upgrade of shield power.')
             self.do_infrastructure()
 
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
-
-        upgrade = get_improve_shield_power(current_planet['id'])
+        upgrade = get_improve_shield_power(self.selected_planet_id, self.token)
 
         if 'errors' in upgrade:
             print(upgrade['errors'][0]['message'])
@@ -350,10 +365,7 @@ class GalaxyClient(cmd.Cmd):
             print('Canceled upgrade of military power.')
             self.do_infrastructure()
 
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
-
-        upgrade = get_improve_military_power(current_planet['id'])
+        upgrade = get_improve_military_power(self.selected_planet_id, self.token)
 
         if 'errors' in upgrade:
             print(upgrade['errors'][0]['message'])
@@ -367,33 +379,78 @@ class GalaxyClient(cmd.Cmd):
     ###################################
     #   MISSIONS
     ###################################
+    def do_mission_reports(self, *args):
+        mission_reports = get_mission_reports(self.user_metadata[0], self.token)
+        rows = []
+        for mission in mission_reports['data']['missionReports']:
+            row = ''
+            row += f"{mission['kind']} mission From {mission['originCoords']} to {mission['targetCoords']} State: {mission['state']}\n"
+            row += f"Deploy: {mission['launchDatetime']} Arrival: {mission['arrivalDatetime']} Return: {mission['returnDatetime']}\n"
+            fleet = Counter([i['name'] for i in mission['fleet']]).items()
+            fleet = ''.join(f'{k} x {v}\n' for k, v in fleet)
+            row += f"Fleet:\n {fleet}\n"
+            row += f'Resources: \nSteel: {mission["steel"]} Water: {mission["water"]} Gold: {mission["gold"]}\n'
+            rows.append(row)
+
+        for row in rows:
+            print(row)
+            print('-----------------------------------------------------------------------------------')
+
+        options_menu = [['Available Commands' ,chr(0x15CC),"overview", 'universe', 'hangar', 'farms', 'infrastructure']]
+        menu_headers = ['COMMAND OPTIONS MENU', chr(0x15CA), chr(0x15CA), chr(0x15CA), chr(0x15CA)]
+        print(tabulate(options_menu, menu_headers, tablefmt="simple"))
+        print('-----------------------------------------------------------------------------------\n')
+
 
     def do_send_attack_mission(self, *args):
         """
         Send a fleet to attack and loot another planet.
         """
-        g, ss, p = self.selected_planet
-        current_planet = get_planet(g, ss, p)['data']['solarSystem'][f'position{p}']
-
+        # g, ss, p = self.selected_planet
+        # current_planet = get_planet(g, ss, p, self.token)['data']['solarSystem'][f'position{p}']
+        user_planets = get_user_data(*self.user_metadata)['data']['user']['planets']
+        current_planet = None
+        for planet in user_planets:
+            if planet['id'] == self.selected_planet_id:
+                current_planet = planet
+                break
+        # g, ss, p = current_planet['galaxy'], current_planet['solarSystem'], current_planet['position']
         available_ships = {i['id']: i['name'] for i in current_planet['fleet']}
 
         if not available_ships:
-            print(f'{chr(0x274C)}  IYou dont have any ships available in this planet to launch an assault mission! {chr(0x274C)}')
+            print(f'{chr(0x274C)} You dont have any ships available in this planet to launch an assault mission! {chr(0x274C)}')
             self.do_send_attack_mission()
             return
 
-        target_planet = input('Insert the target planet ID: ')
-        if not target_planet or not target_planet.strip().isdigit():
-            print(f'{chr(0x274C)}  Invalid planet ID please inser correct target planet ID {chr(0x274C)}')
+        print('Insert the target planet coordinates:\n')
+
+        target_planet_galaxy = input('Insert the target planet Galaxy: ')
+        if not target_planet_galaxy or not target_planet_galaxy.strip().isdigit():
+            print(f'{chr(0x274C)}  Invalid galaxy please insert correct target planet galaxy (Single number) {chr(0x274C)}')
             self.do_send_attack_mission()
             return
-        
-        target_planet = int(target_planet)
-        if target_planet == current_planet['id']:
+        target_planet_galaxy = int(target_planet_galaxy)
+
+        target_planet_ss = input('Insert the target planet Solar System: ')
+        if not target_planet_ss or not target_planet_ss.strip().isdigit():
+            print(f'{chr(0x274C)}  Invalid Solar System please insert correct target planet solar system (Single number) {chr(0x274C)}')
+            self.do_send_attack_mission()
+            return
+        target_planet_ss = int(target_planet_ss)
+
+        target_planet_position = input('Insert the target planet position in the solar system: ')
+        if not target_planet_position or not target_planet_position.strip().isdigit():
+            print(f'{chr(0x274C)}  Invalid planet position please insert correct target planet solar system position (Single number) {chr(0x274C)}')
+            self.do_send_attack_mission()
+            return
+        target_planet_position = int(target_planet_position)
+
+        target_coords = [target_planet_galaxy, target_planet_ss, target_planet_position]
+        origin_coords = [current_planet['galaxy'], current_planet['solarSystem'], current_planet['position']]
+        if target_coords == origin_coords:
             print(f'{chr(0x274C)}  Cannot attack your own planet {chr(0x274C)}')
             self.do_send_attack_mission()
             return
-
 
         fleet_ids = []
         print('Insert each ship correct ID to join fleet!')
@@ -424,8 +481,7 @@ class GalaxyClient(cmd.Cmd):
             self.do_overview()
             return
 
-        
-        mission = get_send_attack_mission(current_planet['id'], target_planet, fleet_ids)
+        mission = get_send_attack_mission(self.selected_planet_id, target_coords, fleet_ids, self.token)
 
         if 'errors' in mission:
             print(mission['errors'][0]['message'])
@@ -462,8 +518,14 @@ class GalaxyClient(cmd.Cmd):
         """
         Explore the universe galaxies and solar systems
         """
-        g, ss, p = self.selected_planet
-        show_solar_system(g, ss)
+        user_planets = get_user_data(*self.user_metadata)['data']['user']['planets']
+        current_planet = None
+        for planet in user_planets:
+            if planet['id'] == self.selected_planet_id:
+                current_planet = planet
+                break
+        g, ss = current_planet['galaxy'], current_planet['solarSystem']
+        show_solar_system(g, ss, self.token)
 
 
     def do_explore_galaxy(self, coords):
@@ -488,7 +550,7 @@ class GalaxyClient(cmd.Cmd):
             print(tabulate([[f'SOLAR SYSTEM {solar_system_id} IS OUT OF RANGE'], ['Solar systems limits are from 1 to 500']]))
             self.do_universe()
 
-        show_solar_system(galaxy_id, solar_system_id)
+        show_solar_system(galaxy_id, solar_system_id, self.token)
 
     
     def do_EOF(self, line):
